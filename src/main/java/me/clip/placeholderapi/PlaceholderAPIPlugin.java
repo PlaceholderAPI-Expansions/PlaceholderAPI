@@ -20,10 +20,6 @@
 
 package me.clip.placeholderapi;
 
-import java.text.SimpleDateFormat;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.Level;
 import me.clip.placeholderapi.commands.PlaceholderCommandRouter;
 import me.clip.placeholderapi.configuration.PlaceholderAPIConfig;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
@@ -40,6 +36,11 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
+import java.text.SimpleDateFormat;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
+
 /**
  * Yes I have a shit load of work to do...
  *
@@ -53,16 +54,32 @@ public final class PlaceholderAPIPlugin extends JavaPlugin {
 
   static {
     final String version = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
-
-    boolean isSpigot;
-    try {
-      Class.forName("org.spigotmc.SpigotConfig");
-      isSpigot = true;
-    } catch (final ExceptionInInitializerError | ClassNotFoundException ignored) {
-      isSpigot = false;
+  
+    // Not the prettiest thing to do, but it does the job.
+    Version.Type type;
+    try{
+      Class.forName("net.pl3x.purpur.PurpurConfig");
+      type = Version.Type.PURPUR;
+    } catch (final ExceptionInInitializerError | ClassNotFoundException e1) {
+      try {
+        Class.forName("com.tuinity.tuinity.config.TuinityConfig");
+        type = Version.Type.TUINITY;
+      } catch (final ExceptionInInitializerError | ClassNotFoundException e2) {
+        try {
+          Class.forName("com.destroytokyo.paper.PaperConfig");
+          type = Version.Type.PAPERMC;
+        } catch (final ExceptionInInitializerError | ClassNotFoundException e3) {
+          try {
+            Class.forName("org.spigotmc.SpigotConfig");
+            type = Version.Type.SPIGOT;
+          } catch (final ExceptionInInitializerError | ClassNotFoundException e4) {
+            type = Version.Type.UNKNOWN;
+          }
+        }
+      }
     }
-
-    VERSION = new Version(version, isSpigot);
+    
+    VERSION = new Version(version, type);
   }
 
   @NotNull
@@ -209,8 +226,10 @@ public final class PlaceholderAPIPlugin extends JavaPlugin {
     metrics.addCustomChart(new Metrics.SimplePie("using_expansion_cloud",
         () -> getPlaceholderAPIConfig().isCloudEnabled() ? "yes" : "no"));
 
-    metrics.addCustomChart(
-        new Metrics.SimplePie("using_spigot", () -> getServerVersion().isSpigot() ? "yes" : "no"));
+    metrics.addCustomChart(new Metrics.SimplePie("using_spigot",
+            () -> getServerVersion().isSpigot() ? getServerVersion().isFork() ? "yes (fork)" : "yes" : "no"));
+    
+    metrics.addCustomChart(new Metrics.SimplePie("server_brand", () -> getServerVersion().getName()));
 
     metrics.addCustomChart(new Metrics.AdvancedPie("expansions_used", () -> {
       final Map<String, Integer> values = new HashMap<>();
